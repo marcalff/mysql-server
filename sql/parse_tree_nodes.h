@@ -6129,4 +6129,22 @@ PT_set_operation *flatten_equal_set_ops(MEM_ROOT *mem_root, const POS &pos,
   }
 }
 
+// -- BEGIN POC
+
+class PT_create_type_stmt : public Parse_tree_root {
+  Type_ident *m_type_name;
+  POS m_columns_end_pos;
+
+ public:
+  PT_create_type_stmt(const POS &pos, Type_ident *type_name,
+                      const POS &columns_end_pos = POS())
+      : Parse_tree_root(pos),
+        m_type_name(type_name),
+        m_columns_end_pos(columns_end_pos) {}
+
+  Sql_cmd *make_cmd(THD *thd) override;
+};
+
+// -- END POC
+
 #endif /* PARSE_TREE_NODES_INCLUDED */

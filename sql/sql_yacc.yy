@@ -173,6 +173,8 @@ Note: YYTHD is passed as an argument to yyparse(), and subsequently to yylex().
 #include "violite.h"
 #include "sql/tablesample.h"
 
+#include "sql/sql_user_defined_type.h"
+
 /* this is to get the bison compilation windows warnings out */
 #ifdef _MSC_VER
 /* warning C4065: switch statement contains 'default' but no 'case' labels */
@@ -2004,6 +2006,8 @@ CHARSET_INFO *warn_on_deprecated_user_defined_collation(
 
 %type <text_literal> text_literal
 
+%type <type_ident> type_ident
+
 %type <top_level_node>
         alter_instance_stmt
         alter_library_stmt
@@ -2019,6 +2023,7 @@ CHARSET_INFO *warn_on_deprecated_user_defined_collation(
         create_role_stmt
         create_srs_stmt
         create_table_stmt
+        create_type_stmt
         delete_stmt
         describe_stmt
         do_stmt
@@ -2222,7 +2227,7 @@ CHARSET_INFO *warn_on_deprecated_user_defined_collation(
 
 %type <int_type> int_type
 
-%type <type> spatial_type type
+%type <type> spatial_type broken_type builtin_type user_defined_type
 
 %type <numeric_type> real_type numeric_type
 
@@ -2520,6 +2525,7 @@ simple_statement:
         | create_role_stmt
         | create_srs_stmt
         | create_table_stmt
+        | create_type_stmt
         | deallocate                    { $$= nullptr; }
         | delete_stmt
         | describe_stmt
@@ -3337,6 +3343,28 @@ opt_channel:
           { $$ = to_lex_cstring($3); }
         ;
 
+type_ident:
+          IDENT_sys
+          {
+            $$= NEW_PTN Type_ident(to_lex_cstring($1));
+            if ($$ == nullptr)
+              MYSQL_YYABORT;
+          }
+        | IDENT_sys '.' IDENT_sys
+          {
+            $$= NEW_PTN Type_ident(to_lex_cstring($1), to_lex_cstring($3));
+            if ($$ == nullptr)
+              MYSQL_YYABORT;
+          }
+        ;
+
+create_type_stmt:
+          CREATE TYPE_SYM type_ident AS builtin_type
+          {
+            $$= NEW_PTN PT_create_type_stmt(@$, $3);
+          }
+        ;
+
 create_table_stmt:
           CREATE opt_temporary_or_external TABLE_SYM opt_if_not_exists table_ident
           '(' table_element_list ')' opt_create_table_options_etc
@@ -4014,7 +4042,7 @@ sp_fdparams:
         ;
 
 sp_fdparam:
-          ident type opt_collate
+          ident broken_type opt_collate
           {
             THD *thd= YYTHD;
             LEX *lex= thd->lex;
@@ -4076,7 +4104,7 @@ sp_pdparams:
         ;
 
 sp_pdparam:
-          sp_opt_inout ident type opt_collate
+          sp_opt_inout ident broken_type opt_collate
           {
             THD *thd= YYTHD;
             LEX *lex= thd->lex;
@@ -4173,7 +4201,7 @@ sp_decls:
 sp_decl:
           DECLARE_SYM           /*$1*/
           sp_decl_idents        /*$2*/
-          type                  /*$3*/
+          broken_type                  /*$3*/
           opt_collate           /*$4*/
           sp_opt_default        /*$5*/
           {                     /*$6*/
@@ -4232,6 +4260,32 @@ sp_decl:
               spvar->type= var_type;
               spvar->default_value= dflt_value_item;
 
+              // ===
+
+              TypeDescriptor td;
+              td.m_type = var_type;
+              td.m_type_flags = $3->get_type_flags();
+              td.m_length = $3->get_length();
+              td.m_dec = $3->get_dec();
+              td.m_charset = cs ? cs : thd->variables.collation_database;
+              td.m_has_explicit_collation = ($4 != nullptr);
+              td.m_geo_type = $3->get_uint_geom_type();
+              td.m_internal_list = $3->get_interval_list();
+              td.m_type_ident = $3->get_type_ident();
+
+              // FIXME: at parsing time or runtime ?
+              if (resolve_type_descriptor(thd, &td)) {
+                MYSQL_YYABORT;
+              }
+
+              FieldDescriptor fd;
+
+              if (spvar->field_def.init_from_type_descriptor(thd, "", &td, &fd))
+              {
+                MYSQL_YYABORT;
+              }
+
+/*
               if (spvar->field_def.init(thd, "", var_type,
                                         $3->get_length(), $3->get_dec(),
                                         $3->get_type_flags(),
@@ -4244,6 +4298,7 @@ sp_decl:
               {
                 MYSQL_YYABORT;
               }
+*/
 
               if (prepare_sp_create_field(thd, &spvar->field_def))
                 MYSQL_YYABORT;
@@ -7141,11 +7196,11 @@ constraint_enforcement:
         ;
 
 field_def:
-          type opt_column_attribute_list
+          broken_type /* FIXME: opt_collate */ opt_column_attribute_list
           {
             $$= NEW_PTN PT_field_def(@$, $1, $2);
           }
-        | type opt_collate opt_generated_always
+        | broken_type opt_collate opt_generated_always
           AS '(' expr ')'
           opt_stored_attribute opt_column_attribute_list
           {
@@ -7177,7 +7232,7 @@ opt_stored_attribute:
         | STORED_SYM  { $$= Virtual_or_stored::STORED; }
         ;
 
-type:
+builtin_type:
           int_type opt_field_length field_options
           {
             $$= NEW_PTN PT_numeric_type(@$, YYTHD, $1, $2, $3);
@@ -7369,6 +7424,29 @@ type:
         | JSON_SYM
           {
             $$= NEW_PTN PT_json_type(@$);
+          }
+        ;
+
+user_defined_type:
+          type_ident
+          {
+#ifdef WITH_EXPERIMENTAL_UDT
+            $$= NEW_PTN PT_user_defined_type(@$, $1);
+#else
+            my_error(ER_NOT_SUPPORTED_YET, MYF(0), "USER DEFINED TYPE");
+            MYSQL_YYABORT;
+#endif
+          }
+        ;
+
+broken_type:
+          builtin_type
+          {
+            $$ = $1;
+          }
+        | user_defined_type
+          {
+            $$ = $1;
           }
         ;
 
@@ -7643,6 +7721,7 @@ column_attribute:
           {
             $$= NEW_PTN PT_comment_column_attr(@$, to_lex_cstring($2));
           }
+/* FIXME: */
         | COLLATE_SYM collation_name
           {
             $$= NEW_PTN PT_collate_column_attr(@$, $2);
@@ -12529,7 +12608,7 @@ jt_column:
           {
             $$= NEW_PTN PT_json_table_column_for_ordinality(@$, $1);
           }
-        | ident type opt_collate jt_column_type PATH_SYM text_literal
+        | ident broken_type opt_collate jt_column_type PATH_SYM text_literal
           opt_on_empty_or_error_json_table
           {
             auto column = make_unique_destroy_only<Json_table_column>(
@@ -18667,7 +18746,7 @@ sf_tail:
             Lex->sphead->m_parser_data.set_parameter_end_ptr(@7.cpp.start);
           }
           RETURNS_SYM           /* $9 */
-          type                  /* $10 */
+          broken_type                  /* $10 */
           opt_collate           /* $11 */
           {                     /* $12 */
             LEX *lex= Lex;

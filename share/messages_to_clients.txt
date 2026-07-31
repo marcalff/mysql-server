@@ -11052,6 +11052,18 @@ ER_CSA_CRST_REQUIREMENT_GTID_ONLY
 ER_DA_CANNOT_REPLICATE_WITHOUT_BINLOG
   eng "Cannot replicate from source as it does not have logical log enabled. Check source configuration to enable it."
 
+ER_WARN_CODE_NOT_IMPLEMENTED
+  eng "The following code is not implemented: %s"
+
+ER_UDT_TYPE_CREATE_EXISTS
+  eng "Can't create user defined type '%-.192s.%-.192s'; user defined type exists"
+
+ER_NO_SUCH_UDT_TYPE
+  eng "User defined type '%-.192s.%-.192s' doesn't exist"
+
+ER_UDT_TYPE_DROP_EXISTS
+  eng "Can't drop user defined type '%-.192s.%-.192s'; user defined type doesn't exist"
+
 #
 #  End of "9.7 cal-ver compatibility lineage (starts from 26.7)" error messages (server-to-client).
 #
