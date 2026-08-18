@@ -45,25 +45,28 @@ class mysql_udt_registration_imp {
 
 class mysql_udt_value_null_imp {
  public: /* service implementations */
-  static DEFINE_METHOD(void, set_null, (UDT_value * f, bool is_null));
-  static DEFINE_METHOD(void, get_null, (UDT_value * f, bool *is_null));
+  static DEFINE_METHOD(void, set_null, (UDT_value_out * f, bool is_null));
+  static DEFINE_METHOD(void, get_null, (UDT_value_in * f, bool *is_null));
 };
 
 class mysql_udt_value_string_imp {
  public: /* service implementations */
   static DEFINE_METHOD(void, set_utf8mb4,
-                       (UDT_value * f, const char *value, unsigned int length));
+                       (UDT_value_out * f, const char *value,
+                        unsigned int length));
   static DEFINE_METHOD(void, get_utf8mb4,
-                       (UDT_value * f, const char **str, unsigned int *length));
+                       (UDT_value_in * f, const char **str,
+                        unsigned int *length));
 };
 
 class mysql_udt_value_blob_imp {
  public: /* service implementations */
   static DEFINE_METHOD(void, set,
-                       (UDT_value * f, const unsigned char *val,
+                       (UDT_value_out * f, const unsigned char *val,
                         unsigned int len));
   static DEFINE_METHOD(void, get,
-                       (UDT_value * f, unsigned char *val, unsigned int *len));
+                       (UDT_value_in * f, const unsigned char **val,
+                        unsigned int *len));
 };
 
 #endif  // MYSQL_USER_DEFINED_TYPE_IMP_H

@@ -46,26 +46,27 @@ END_SERVICE_DEFINITION(udt_registration)
 
 BEGIN_SERVICE_DEFINITION(udt_value_null)
 
-DECLARE_METHOD(void, set_null, (UDT_value * f, bool is_null));
-DECLARE_METHOD(void, get_null, (UDT_value * f, bool *is_null));
+DECLARE_METHOD(void, set_null, (UDT_value_out * f, bool is_null));
+DECLARE_METHOD(void, get_null, (UDT_value_in * f, bool *is_null));
 
 END_SERVICE_DEFINITION(udt_value_null)
 
 BEGIN_SERVICE_DEFINITION(udt_value_string)
 
 DECLARE_METHOD(void, set_utf8mb4,
-               (UDT_value * f, const char *value, unsigned int length));
+               (UDT_value_out * f, const char *value, unsigned int length));
 DECLARE_METHOD(void, get_utf8mb4,
-               (UDT_value * f, const char **str, unsigned int *length));
+               (UDT_value_in * f, const char **str, unsigned int *length));
 
 END_SERVICE_DEFINITION(udt_value_string)
 
 BEGIN_SERVICE_DEFINITION(udt_value_blob)
 
 DECLARE_METHOD(void, set,
-               (UDT_value * f, const unsigned char *val, unsigned int len));
+               (UDT_value_out * f, const unsigned char *val, unsigned int len));
 DECLARE_METHOD(void, get,
-               (UDT_value * f, unsigned char *val, unsigned int *len));
+               (UDT_value_in * f, const unsigned char **val,
+                unsigned int *len));
 
 END_SERVICE_DEFINITION(udt_value_blob)
 

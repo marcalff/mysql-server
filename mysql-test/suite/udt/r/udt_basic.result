@@ -52,16 +52,21 @@ BEGIN
 DECLARE a test.complex_number;
 DECLARE b test.complex_number;
 DECLARE c test.complex_number;
+DECLARE s VARCHAR(80);
 SET a = complex_number_from_string("1+2i");
 SET b = complex_number_from_string("3+4i");
 SET c = complex_number_add(a, b);
-# SELECT complex_number_to_string(c);
+SET s = complex_number_to_string(c);
+SELECT s as "result";
+# SELECT complex_number_to_string(c) as "result 2";
 END$$
 Warnings:
 Warning	6910	The following code is not implemented: resolve_type_descriptor()
 Warning	6910	The following code is not implemented: resolve_type_descriptor()
 Warning	6910	The following code is not implemented: resolve_type_descriptor()
 call test.complex();
+result
+4.000000+6.000000i
 Warnings:
 Warning	6910	The following code is not implemented: resolve_type_descriptor()
 Warning	6910	The following code is not implemented: resolve_type_descriptor()

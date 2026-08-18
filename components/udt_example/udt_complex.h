@@ -26,14 +26,22 @@
 #ifndef UDT_COMPLEX_H_INCLUDED
 #define UDT_COMPLEX_H_INCLUDED
 
+#include <cstring>
+
 namespace udt_example {
 
 struct serialized_complex {
   unsigned char buffer[16];
 
-  unsigned char *ptr() { return &buffer[0]; }
+  const unsigned char *ptr() { return &buffer[0]; }
 
   unsigned int length() { return sizeof(buffer); }
+
+  void set(const unsigned char *ptr, unsigned int len) {
+    if (len == length()) {
+      std::memcpy(&buffer[0], ptr, len);
+    }
+  }
 };
 
 class Complex {

@@ -124,6 +124,7 @@ bool resolve_type_descriptor(THD *thd, TypeDescriptor *td) {
 
   fprintf(stderr, "resolve_type_descriptor() use type\n");
 
+#ifdef NEVER
   // FIXME: forged CHAR(13)
   td->m_type = MYSQL_TYPE_STRING;
   td->m_type_flags = 0;
@@ -133,8 +134,19 @@ bool resolve_type_descriptor(THD *thd, TypeDescriptor *td) {
   td->m_has_explicit_collation = false;
   td->m_geo_type = 0;
   td->m_internal_list = nullptr;
+#endif
 
-  // FIXME, use type
+  // FIXME: forged BINARY(16)
+  td->m_type = MYSQL_TYPE_BLOB;
+  td->m_type_flags = 0;
+  td->m_length = "16";
+  td->m_dec = nullptr;
+  td->m_charset = &my_charset_bin;
+  td->m_has_explicit_collation = false;
+  td->m_geo_type = 0;
+  td->m_internal_list = nullptr;
+
+  // FIXME, use type from dd::UDT_Type.
 
   return false;
 }

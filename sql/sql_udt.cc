@@ -187,24 +187,36 @@ void release_udt_function(udt_function_record *record) {
 // Service
 //-------------------------------------------------------------------
 
-class UDT_value {
+class UDT_value_in {
  public:
-  UDT_value(Item *item) : m_item(item) {}
+  UDT_value_in(Item *item) : m_item(item) {}
 
-  void set_null(bool is_null);
   void get_null(bool *is_null);
 
-  void set_utf8mb4(const char *str, unsigned int length);
   void get_utf8mb4(const char **str, unsigned int *length);
+
+  void get_blob(const unsigned char **val, unsigned int *length);
 
  private:
   Item *m_item;
   String m_string_data;
 };
 
-void UDT_value::set_null(bool is_null) {}
+class UDT_value_out {
+ public:
+  UDT_value_out(Field *field) : m_field(field) {}
 
-void UDT_value::get_null(bool *is_null) {
+  void set_null(bool is_null);
+
+  void set_utf8mb4(const char *str, unsigned int length);
+
+  void set_blob(const unsigned char *val, unsigned int length);
+
+ private:
+  Field *m_field;
+};
+
+void UDT_value_in::get_null(bool *is_null) {
   assert(m_item != nullptr);  // readable
 
   // Defensive, called from 3rd party components.
@@ -213,12 +225,38 @@ void UDT_value::get_null(bool *is_null) {
   }
 }
 
-void UDT_value::get_utf8mb4(const char **str, unsigned int *length) {
+void UDT_value_out::set_null(bool is_null) {
+  // FIXME: ptrdiff_t row_offset ?
+  if (is_null) {
+    m_field->set_null();
+  } else {
+    m_field->set_notnull();
+  }
+}
+
+void UDT_value_in::get_utf8mb4(const char **str, unsigned int *length) {
   if (m_item != nullptr) {
     String *data = m_item->val_str(&m_string_data);
     *str = data->ptr();
     *length = data->length();
   }
+}
+
+void UDT_value_out::set_utf8mb4(const char *str, unsigned int length) {
+  m_field->store(str, length, &my_charset_utf8mb4_0900_ai_ci);
+}
+
+void UDT_value_in::get_blob(const unsigned char **val, unsigned int *length) {
+  if (m_item != nullptr) {
+    String *data = m_item->val_str(&m_string_data);
+    *val = reinterpret_cast<unsigned char *>(data->ptr());
+    *length = data->length();
+  }
+}
+
+void UDT_value_out::set_blob(const unsigned char *val, unsigned int length) {
+  const char *str = reinterpret_cast<const char *>(val);
+  m_field->store(str, length, &my_charset_bin);
 }
 
 DEFINE_METHOD(int, mysql_udt_registration_imp::register_type,
@@ -271,12 +309,14 @@ DEFINE_METHOD(int, mysql_udt_registration_imp::unregister_function,
 }
 
 DEFINE_METHOD(void, mysql_udt_value_null_imp::set_null,
-              (UDT_value * f, bool is_null)) {
+              (UDT_value_out * f, bool is_null)) {
   fprintf(stderr, "mysql_udt_value_null_imp::set_null()\n");
+  assert(f != nullptr);
+  f->set_null(is_null);
 }
 
 DEFINE_METHOD(void, mysql_udt_value_null_imp::get_null,
-              (UDT_value * f, bool *is_null)) {
+              (UDT_value_in * f, bool *is_null)) {
   fprintf(stderr, "mysql_udt_value_null_imp::get_null()\n");
   assert(f != nullptr);
   assert(is_null != nullptr);
@@ -284,12 +324,14 @@ DEFINE_METHOD(void, mysql_udt_value_null_imp::get_null,
 }
 
 DEFINE_METHOD(void, mysql_udt_value_string_imp::set_utf8mb4,
-              (UDT_value * f, const char *value, unsigned int length)) {
+              (UDT_value_out * f, const char *value, unsigned int length)) {
   fprintf(stderr, "mysql_udt_value_string_imp::set_utf8mb4()\n");
+  assert(f != nullptr);
+  f->set_utf8mb4(value, length);
 }
 
 DEFINE_METHOD(void, mysql_udt_value_string_imp::get_utf8mb4,
-              (UDT_value * f, const char **str, unsigned int *length)) {
+              (UDT_value_in * f, const char **str, unsigned int *length)) {
   fprintf(stderr, "mysql_udt_value_string_imp::get_utf8mb4()\n");
   assert(f != nullptr);
   assert(str != nullptr);
@@ -298,18 +340,47 @@ DEFINE_METHOD(void, mysql_udt_value_string_imp::get_utf8mb4,
 }
 
 DEFINE_METHOD(void, mysql_udt_value_blob_imp::set,
-              (UDT_value * f, const unsigned char *val, unsigned int len)) {
+              (UDT_value_out * f, const unsigned char *val, unsigned int len)) {
   fprintf(stderr, "mysql_udt_value_blob_imp::set()\n");
+  assert(f != nullptr);
+  f->set_blob(val, len);
 }
 
 DEFINE_METHOD(void, mysql_udt_value_blob_imp::get,
-              (UDT_value * f, unsigned char *val, unsigned int *len)) {
+              (UDT_value_in * f, const unsigned char **val,
+               unsigned int *len)) {
   fprintf(stderr, "mysql_udt_value_blob_imp::get()\n");
+  assert(f != nullptr);
+  assert(val != nullptr);
+  assert(len != nullptr);
+  f->get_blob(val, len);
 }
 
 //-------------------------------------------------------------------
 // Runtime, item tree
 //-------------------------------------------------------------------
+
+static void convert_type_descriptor(const mysql_type_descriptor_t *from,
+                                    TypeDescriptor *to) {
+  to->m_type = static_cast<enum_field_types>(from->mysql_type);
+  to->m_type_flags = from->type_flags;
+  // to->m_length = from->length;
+  // to->m_dec = from->decimals;
+
+  // FIXME: how/if to expose charset from component
+  if (from->mysql_type == MYSQL_FIELD_TYPE_BLOB) {
+    to->m_charset = &my_charset_bin;
+  } else if (from->mysql_type == MYSQL_FIELD_TYPE_VARCHAR) {
+    to->m_charset = &my_charset_utf8mb4_0900_ai_ci;
+  } else {
+    to->m_charset = from->charset;
+  }
+
+  to->m_has_explicit_collation = from->has_explicit_collation;
+  // to->m_geo_type = from->mysql_type;
+  // to->m_internal_list = from->mysql_type;
+  // to->m_type_ident = from->type_ident;
+}
 
 Item_udt_func::Item_udt_func(const POS &pos, udt_function_record *udt_function,
                              PT_item_list *opt_list)
@@ -328,17 +399,71 @@ bool Item_udt_func::resolve_type_inner(THD *thd) {
   fprintf(stderr, "Item_udt_func::resolve_type_inner()\n");
 
   const mysql_type_descriptor_t *td = m_udt_function->fd->return_type;
-  auto td2 = static_cast<enum_field_types> (td->mysql_type);
+  auto td2 = static_cast<enum_field_types>(td->mysql_type);
 
   // FIXME: see Item_func_sp::resolve_type()
   set_data_type(td2);
+
+  // FIXME: Create Field for return type
+  m_return_field = create_result_field(thd);
+
+  if (m_return_field == nullptr) {
+    return true;
+  }
+
   return false;
+}
+
+// See sp_head::create_result_field()
+Field *Item_udt_func::create_result_field(THD *thd) {
+  bool rc;
+
+  // Forge dummy table
+  m_share.db_low_byte_first = true;
+  m_table.s = &m_share;
+
+  // Forge field def
+  mysql_type_descriptor_t *td = m_udt_function->fd->return_type;
+  TypeDescriptor td2;
+  convert_type_descriptor(td, &td2);
+
+  FieldDescriptor fd;
+  const char *field_name = "dummy";
+  rc = m_return_field_def.init_from_type_descriptor(thd, field_name, &td2, &fd);
+
+  if (rc) {
+    return nullptr;
+  }
+
+  // Add 1 for null byte.
+  m_table.record[0] =
+      thd->mem_root->ArrayAlloc<uchar>(m_return_field_def.pack_length() + 1);
+  if (m_table.record[0] == nullptr) return nullptr;
+
+  size_t field_length = m_return_field_def.max_display_width_in_bytes();
+
+  assert(m_return_field_def.auto_flags == Field::NONE);
+  Field *field =
+      ::make_field(m_return_field_def, m_table.s, field_name, field_length,
+                   m_table.record[0] + 1, m_table.record[0], 0);
+
+  // Return early, failed to allocate Field on memroot
+  if (field == nullptr) return nullptr;
+
+  field->gcol_info = m_return_field_def.gcol_info;
+  field->m_default_val_expr = m_return_field_def.m_default_val_expr;
+  field->stored_in_db = m_return_field_def.stored_in_db;
+  field->init(&m_table);
+
+  assert(field->pack_length() == m_return_field_def.pack_length());
+
+  return field;
 }
 
 int build_argument_value_array(Item_udt_func *that,
                                mysql_function_descriptor_t *fd,
                                size_t *argument_count,
-                               UDT_value ***argument_value_array) {
+                               UDT_value_in ***argument_value_array) {
   size_t count = fd->argument_count;
 
   if (count == 0) {
@@ -347,13 +472,13 @@ int build_argument_value_array(Item_udt_func *that,
     return 0;
   }
 
-  UDT_value **array = new UDT_value *[count];
+  UDT_value_in **array = new UDT_value_in *[count];
   Item *item;
 
   for (size_t i = 0; i < count; i++) {
     // FIXME: build proper value
     item = that->get_arg(i);
-    array[i] = new UDT_value(item);
+    array[i] = new UDT_value_in(item);
   }
 
   *argument_count = count;
@@ -361,31 +486,43 @@ int build_argument_value_array(Item_udt_func *that,
   return 0;
 }
 
-type_conversion_status Item_udt_func::save_in_field_inner(Field *field,
-                                                          bool no_conversions) {
+type_conversion_status Item_udt_func::save_in_field_inner(
+    Field *field, bool /* no_conversions */) {
   fprintf(stderr, "Item_udt_func::save_in_field_inner() field %s\n",
+          field->field_name);
+
+  evaluate_to_field(field);
+
+  // FIXME
+  return TYPE_ERR_BAD_VALUE;
+}
+
+bool Item_udt_func::execute() {
+  fprintf(stderr, "Item_udt_func::execute()\n");
+  assert(m_return_field != nullptr);
+  return evaluate_to_field(m_return_field);
+}
+
+bool Item_udt_func::evaluate_to_field(Field *field) {
+  fprintf(stderr, "Item_udt_func::evaluate_to_field() field %s\n",
           field->field_name);
   int rc;
 
-  // 1: Find the field actual type
-
-  const mysql_type_descriptor_t *left_td = nullptr;
-
-  // 2: Check the function return type
-
-  const mysql_type_descriptor_t *right_td = m_udt_function->fd->return_type;
   eval_function_t eval = m_udt_function->impl;
 
-  // 3: Build a field value
+  // Build input value(s)
 
-  UDT_value *result_value = nullptr;
   size_t param_count{0};
-  UDT_value **param_array{nullptr};
+  UDT_value_in **param_array{nullptr};
 
   rc = build_argument_value_array(this, m_udt_function->fd, &param_count,
                                   &param_array);
 
-  // 4: Evaluate the function into the value
+  // Build output value
+
+  UDT_value_out *result_value = new UDT_value_out(field);
+
+  // Evaluate the function into the value
 
   fprintf(stderr, "Item_udt_func::save_in_field_inner() field %s before eval\n",
           field->field_name);
@@ -395,9 +532,11 @@ type_conversion_status Item_udt_func::save_in_field_inner(Field *field,
   fprintf(stderr, "Item_udt_func::save_in_field_inner() field %s after eval\n",
           field->field_name);
 
-  // 5: Set the value to the field
+  // Capture the result null value
 
-  return TYPE_ERR_BAD_VALUE;
+  null_value = field->is_null();
+
+  return false;
 }
 
 double Item_udt_func::val_real() {
@@ -411,21 +550,30 @@ longlong Item_udt_func::val_int() {
 }
 
 String *Item_udt_func::val_str(String *str) {
-  assert(false);
-  return nullptr;
+  if (execute()) {
+    return error_str();
+  }
+
+  if (null_value) {
+    return nullptr;
+  }
+
+  return m_return_field->val_str(str);
 }
 
-bool Item_udt_func::val_date(Date_val *date, my_time_flags_t flags) {
+bool Item_udt_func::val_date(Date_val * /* date */,
+                             my_time_flags_t /* flags */) {
   assert(false);
   return false;
 }
 
-bool Item_udt_func::val_time(Time_val *time) {
+bool Item_udt_func::val_time(Time_val * /* time */) {
   assert(false);
   return false;
 }
 
-bool Item_udt_func::val_datetime(Datetime_val *dt, my_time_flags_t flags) {
+bool Item_udt_func::val_datetime(Datetime_val * /* dt */,
+                                 my_time_flags_t /* flags */) {
   assert(false);
   return false;
 }

@@ -30,7 +30,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 #include "mysql/components/services/bits/mysql_field_types_bits.h"
 
 struct CHARSET_INFO;
-struct UDT_value;
+struct UDT_value_in;
+struct UDT_value_out;
 
 struct mysql_type_ident_t {
   const char *schema;
@@ -59,8 +60,8 @@ struct mysql_function_descriptor_t {
 typedef int (*register_type_t)(mysql_type_descriptor_t *td, void *impl);
 typedef int (*unregister_type_t)(mysql_type_descriptor_t *td);
 
-typedef int (*eval_function_t)(UDT_value *result, size_t argument_count,
-                               UDT_value **argument_value_array);
+typedef int (*eval_function_t)(UDT_value_out *result, size_t argument_count,
+                               UDT_value_in **argument_value_array);
 
 typedef int (*register_function_t)(mysql_function_descriptor_t *fd,
                                    eval_function_t impl);

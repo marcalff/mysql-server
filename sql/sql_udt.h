@@ -24,6 +24,7 @@
 #ifndef SQL_UDT_INCLUDED
 #define SQL_UDT_INCLUDED
 
+#include "sql/create_field.h"
 #include "sql/item_func.h"
 
 struct udt_function_record;
@@ -54,12 +55,26 @@ class Item_udt_func : public Item_func {
   bool val_datetime(Datetime_val *dt, my_time_flags_t flags) override;
   const char *func_name() const override;
 
+  Field *create_result_field(THD *thd);
+
  protected:
   type_conversion_status save_in_field_inner(Field *field,
                                              bool no_conversions) override;
 
  private:
+  bool execute();
+  bool init_result_field(THD *thd);
+  bool evaluate_to_field(Field *field);
+
   udt_function_record *m_udt_function;
+
+  // Fake table to hold the result field.
+  TABLE m_table;
+  TABLE_SHARE m_share;
+
+  Create_field m_return_field_def;
+
+  Field *m_return_field{nullptr};
 };
 
 void udt_init_globals();

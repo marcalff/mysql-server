@@ -81,13 +81,14 @@ struct mysql_function_descriptor_t FROM_STRING = {
     &FROM_STRING_ARGS[0]              // argument_type_array
 };
 
-static int complex_number_from_string(UDT_value *result, size_t argument_count,
-                                      UDT_value **argument_value_array) {
+static int complex_number_from_string(UDT_value_out *result,
+                                      size_t argument_count,
+                                      UDT_value_in **argument_value_array) {
   fprintf(stderr, "complex_number_from_string()\n");
 
   assert(argument_count == 1);
 
-  UDT_value *p1 = argument_value_array[0];
+  UDT_value_in *p1 = argument_value_array[0];
   bool p1_is_null{false};
   val_null_srv->get_null(p1, &p1_is_null);
 
@@ -147,8 +148,47 @@ struct mysql_function_descriptor_t TO_STRING = {
     &TO_STRING_ARGS[0]           // argument_type_array
 };
 
-static int complex_number_to_string(UDT_value *result, size_t argument_count,
-                                    UDT_value **argument_value_array) {
+static int complex_number_to_string(UDT_value_out *result,
+                                    size_t argument_count,
+                                    UDT_value_in **argument_value_array) {
+  fprintf(stderr, "complex_number_to_string()\n");
+
+  assert(argument_count == 1);
+
+  UDT_value_in *p1 = argument_value_array[0];
+  bool p1_is_null{false};
+  val_null_srv->get_null(p1, &p1_is_null);
+
+  if (p1_is_null) {
+    // complex_number_to_string(NULL) -> NULL
+    val_null_srv->set_null(result, true);
+    return 0;
+  }
+
+  const unsigned char *val = nullptr;
+  unsigned int len = 0;
+  val_blob_srv->get(p1, &val, &len);
+
+  serialized_complex serialized;
+  serialized.set(val, len);
+
+  Complex c;
+  c.serialize_from(serialized);
+
+  fprintf(stderr, "complex_number_to_string() p1: r = %lf, i = %lf\n", c.m_real,
+          c.m_imaginary);
+
+  char result_string[1024];
+  snprintf(result_string, sizeof(result_string), "%lf%+lfi", c.m_real,
+           c.m_imaginary);
+
+  fprintf(stderr, "complex_number_to_string() res: %s\n", result_string);
+
+  // complex_number_to_string("valid blob")
+  // -> TYPE string
+  val_null_srv->set_null(result, false);
+  val_string_srv->set_utf8mb4(result, result_string, strlen(result_string));
+
   return 0;
 }
 
@@ -166,8 +206,58 @@ struct mysql_function_descriptor_t ADD = {
     &ADD_ARGS[0]                      // argument_type_array
 };
 
-static int complex_number_add(UDT_value *result, size_t argument_count,
-                              UDT_value **argument_value_array) {
+static int complex_number_add(UDT_value_out *result, size_t argument_count,
+                              UDT_value_in **argument_value_array) {
+  fprintf(stderr, "complex_number_add()\n");
+
+  assert(argument_count == 2);
+
+  UDT_value_in *p1 = argument_value_array[0];
+  UDT_value_in *p2 = argument_value_array[1];
+
+  bool p1_is_null{false};
+  bool p2_is_null{false};
+  val_null_srv->get_null(p1, &p1_is_null);
+  val_null_srv->get_null(p2, &p2_is_null);
+
+  if (p1_is_null || p2_is_null) {
+    // complex_number_to_string(NULL) -> NULL
+    val_null_srv->set_null(result, true);
+    return 0;
+  }
+
+  const unsigned char *val = nullptr;
+  unsigned int len = 0;
+  serialized_complex serialized;
+  Complex c1;
+  Complex c2;
+
+  val_blob_srv->get(p1, &val, &len);
+  serialized.set(val, len);
+  c1.serialize_from(serialized);
+
+  fprintf(stderr, "complex_number_add() p1: r = %lf, i = %lf\n", c1.m_real,
+          c1.m_imaginary);
+
+  val_blob_srv->get(p2, &val, &len);
+  serialized.set(val, len);
+  c2.serialize_from(serialized);
+
+  fprintf(stderr, "complex_number_add() p2: r = %lf, i = %lf\n", c2.m_real,
+          c2.m_imaginary);
+
+  Complex c;
+  c = Complex::add(c1, c2);
+  c.serialize_to(serialized);
+
+  fprintf(stderr, "complex_number_add() res: r = %lf, i = %lf\n", c.m_real,
+          c.m_imaginary);
+
+  // complex_number_add_string("valid blob 1", "valid blob 2")
+  // -> TYPE complex AS BINARY(16)
+  val_null_srv->set_null(result, false);
+  val_blob_srv->set(result, serialized.ptr(), serialized.length());
+
   return 0;
 }
 
