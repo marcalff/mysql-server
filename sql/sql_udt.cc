@@ -460,11 +460,23 @@ Field *Item_udt_func::create_result_field(THD *thd) {
   return field;
 }
 
+/**
+ * @param [out] argument_count size of @p argument_value_array.
+ * @param [out] argument_value_array Input parameters to the UDT function.
+ */
 int build_argument_value_array(Item_udt_func *that,
                                mysql_function_descriptor_t *fd,
                                size_t *argument_count,
                                UDT_value_in ***argument_value_array) {
   size_t count = fd->argument_count;
+  size_t actual = that->arg_count;
+
+  if (count != actual) {
+    *argument_count = 0;
+    *argument_value_array = nullptr;
+    // TODO: Report an error ?
+    return 1;
+  }
 
   if (count == 0) {
     *argument_count = 0;
