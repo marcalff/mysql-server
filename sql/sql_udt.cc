@@ -486,6 +486,14 @@ int build_argument_value_array(Item_udt_func *that,
   return 0;
 }
 
+void destroy_argument_value_array(size_t count, UDT_value_in **array) {
+  for (size_t i = 0; i < count; i++) {
+    delete array[i];
+  }
+
+  delete[] array;
+}
+
 type_conversion_status Item_udt_func::save_in_field_inner(
     Field *field, bool /* no_conversions */) {
   fprintf(stderr, "Item_udt_func::save_in_field_inner() field %s\n",
@@ -536,6 +544,8 @@ bool Item_udt_func::evaluate_to_field(Field *field) {
   fprintf(stderr, "Item_udt_func::save_in_field_inner() field %s after eval\n",
           field->field_name);
 
+  destroy_argument_value_array(param_count, param_array);
+
   if (rc) {
     return true;
   }
@@ -543,8 +553,6 @@ bool Item_udt_func::evaluate_to_field(Field *field) {
   // Capture the result null value
 
   null_value = field->is_null();
-
-  delete[] param_array;
 
   return false;
 }
