@@ -518,23 +518,33 @@ bool Item_udt_func::evaluate_to_field(Field *field) {
   rc = build_argument_value_array(this, m_udt_function->fd, &param_count,
                                   &param_array);
 
+  if (rc) {
+    return true;
+  }
+
   // Build output value
 
-  UDT_value_out *result_value = new UDT_value_out(field);
+  UDT_value_out result_value(field);
 
   // Evaluate the function into the value
 
   fprintf(stderr, "Item_udt_func::save_in_field_inner() field %s before eval\n",
           field->field_name);
 
-  rc = (*eval)(result_value, param_count, param_array);
+  rc = (*eval)(&result_value, param_count, param_array);
 
   fprintf(stderr, "Item_udt_func::save_in_field_inner() field %s after eval\n",
           field->field_name);
 
+  if (rc) {
+    return true;
+  }
+
   // Capture the result null value
 
   null_value = field->is_null();
+
+  delete[] param_array;
 
   return false;
 }
