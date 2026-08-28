@@ -55,6 +55,9 @@ bool resolve_type_descriptor(THD *thd, TypeDescriptor *td) {
   const char *db_name = type_ident->db.str;
   const char *type_name = type_ident->type.str;
 
+  assert(db_name != nullptr);
+  assert(type_name != nullptr);
+
   // MDL LOCK (SCHEMA)
 
   /*

@@ -297,9 +297,15 @@ namespace info_schema {
   Changes:
   - WL#16779 User controlled aliasing for 'utf8'
   A new sql_mode INTERPRET_UTF8_AS_UTF8MB4
+
+  260700:
+  ----------------------------------------------------------------------------
+  Changes:
+  - new table mysql.types
+  - new view INFORMATION_SCHEMA.TYPES
 */
 
-static const uint IS_DD_VERSION = 90500;
+static const uint IS_DD_VERSION = 260700;
 static_assert((IS_DD_VERSION <= MYSQL_VERSION_ID) ||
                   ((IS_DD_VERSION == 800201) && (MYSQL_VERSION_ID >= 80020)),
               "This release can not use a version number from the future");

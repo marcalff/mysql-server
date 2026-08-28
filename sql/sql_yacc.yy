@@ -4273,6 +4273,15 @@ sp_decl:
               td.m_internal_list = $3->get_interval_list();
               td.m_type_ident = $3->get_type_ident();
 
+              if (td.m_type_ident != nullptr) {
+                // Using stored procedure DB as default.
+                if (td.m_type_ident->db.length == 0) {
+                  LEX_CSTRING db = {sp->m_db.str, sp->m_db.length};
+                  Type_ident *qualified = new Type_ident(db, td.m_type_ident->type);
+                  td.m_type_ident = qualified;
+                }
+              }
+
               // FIXME: at parsing time or runtime ?
               if (resolve_type_descriptor(thd, &td)) {
                 MYSQL_YYABORT;

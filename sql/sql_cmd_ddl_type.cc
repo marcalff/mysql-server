@@ -35,8 +35,19 @@ bool Sql_cmd_create_type::execute(THD *thd) {
 #ifdef WITH_EXPERIMENTAL_UDT
   WARN_NOT_IMPLEMENTED(thd, "Sql_cmd_create_type::execute()");
 
+  if (m_type_ident->db.length == 0) {
+    m_type_ident->db = thd->db();
+
+    if (m_type_ident->db.length == 0) {
+      my_error(ER_NO_DB_ERROR, MYF(0));
+      return true;
+    }
+  }
+
   const char *db_name = m_type_ident->db.str;
   const char *type_name = m_type_ident->type.str;
+
+  assert(db_name != nullptr);
 
   // MDL LOCK (SCHEMA)
 
