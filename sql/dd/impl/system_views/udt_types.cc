@@ -40,6 +40,8 @@ UDT_Types::UDT_Types() {
 
   m_target_def.add_from("mysql.types typ");
   m_target_def.add_from("JOIN mysql.schemata sch ON typ.schema_id=sch.id");
+
+  m_target_def.add_where("CAN_ACCESS_DATABASE(sch.name)");
 }
 
 }  // namespace dd::system_views

@@ -4276,7 +4276,7 @@ sp_decl:
               if (td.m_type_ident != nullptr) {
                 // Using stored procedure DB as default.
                 if (td.m_type_ident->db.length == 0) {
-                  LEX_CSTRING db = {sp->m_db.str, sp->m_db.length};
+                  LEX_CSTRING db = to_lex_cstring(sp->m_db);
                   Type_ident *qualified = new Type_ident(db, td.m_type_ident->type);
                   td.m_type_ident = qualified;
                 }
