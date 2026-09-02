@@ -303,15 +303,11 @@ namespace info_schema {
   Changes:
   - WL#17054 Introduce Support for CHECK/NO CHECK at Table and Column Level,
   and UPDATE/NO UPDATE at Column Level in JSON Duality View
-
-  270100:
-  ----------------------------------------------------------------------------
-  Changes:
   - new table mysql.types
   - new view INFORMATION_SCHEMA.TYPES
 */
 
-static const uint IS_DD_VERSION = 270100;
+static const uint IS_DD_VERSION = 261000;
 static_assert((IS_DD_VERSION <= MYSQL_VERSION_ID) ||
                   ((IS_DD_VERSION == 800201) && (MYSQL_VERSION_ID >= 80020)),
               "This release can not use a version number from the future");
