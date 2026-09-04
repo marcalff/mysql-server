@@ -30,6 +30,7 @@
 
 class THD;
 class Type_ident;
+class PT_type;
 
 class Sql_cmd_ddl_type : public Sql_cmd_ddl {
  public:
@@ -39,8 +40,8 @@ class Sql_cmd_ddl_type : public Sql_cmd_ddl {
 
 class Sql_cmd_create_type final : public Sql_cmd_ddl_type {
  public:
-  Sql_cmd_create_type(Type_ident *type_ident)
-      : Sql_cmd_ddl_type(), m_type_ident(type_ident) {}
+  Sql_cmd_create_type(Type_ident *type_ident, PT_type *type)
+      : Sql_cmd_ddl_type(), m_type_ident(type_ident), m_type(type) {}
 
   enum_sql_command sql_command_code() const override {
     return SQLCOM_CREATE_TYPE;
@@ -50,6 +51,7 @@ class Sql_cmd_create_type final : public Sql_cmd_ddl_type {
 
  private:
   Type_ident *m_type_ident;
+  PT_type *m_type;
 };
 
 #endif /* SQL_CMD_DDL_TYPE_INCLUDED */

@@ -6133,13 +6133,15 @@ PT_set_operation *flatten_equal_set_ops(MEM_ROOT *mem_root, const POS &pos,
 
 class PT_create_type_stmt : public Parse_tree_root {
   Type_ident *m_type_name;
+  PT_type *m_type;
   POS m_columns_end_pos;
 
  public:
-  PT_create_type_stmt(const POS &pos, Type_ident *type_name,
+  PT_create_type_stmt(const POS &pos, Type_ident *type_name, PT_type *type,
                       const POS &columns_end_pos = POS())
       : Parse_tree_root(pos),
         m_type_name(type_name),
+        m_type(type),
         m_columns_end_pos(columns_end_pos) {}
 
   Sql_cmd *make_cmd(THD *thd) override;

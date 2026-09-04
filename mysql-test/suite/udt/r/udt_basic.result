@@ -1,9 +1,9 @@
 CREATE TYPE test.usbn13 AS CHAR(13);
 Warnings:
-Warning	6910	The following code is not implemented: Sql_cmd_create_type::execute()
+Warning	6914	The following code is not implemented: Sql_cmd_create_type::execute()
 CREATE TYPE test.complex_number AS BINARY(16);
 Warnings:
-Warning	6910	The following code is not implemented: Sql_cmd_create_type::execute()
+Warning	6914	The following code is not implemented: Sql_cmd_create_type::execute()
 SELECT * FROM INFORMATION_SCHEMA.TYPES;
 TYPE_SCHEMA	TYPE_NAME
 test	complex_number
@@ -29,7 +29,7 @@ DECLARE var test.usbn13;
 SET var = "FIXME";
 END$$
 Warnings:
-Warning	6910	The following code is not implemented: resolve_type_descriptor()
+Warning	6914	The following code is not implemented: resolve_type_descriptor()
 SHOW PROCEDURE CODE test.demo1;
 Pos	Instruction
 0	set var@0 NULL
@@ -39,7 +39,7 @@ Pos	Instruction
 0	set var@0 NULL
 1	set var@0 'FIXME'
 Warnings:
-Warning	6910	The following code is not implemented: resolve_type_descriptor()
+Warning	6914	The following code is not implemented: resolve_type_descriptor()
 CALL test.demo1();
 title
 Demo
@@ -61,15 +61,15 @@ SELECT s as "result";
 # SELECT complex_number_to_string(c) as "result 2";
 END$$
 Warnings:
-Warning	6910	The following code is not implemented: resolve_type_descriptor()
-Warning	6910	The following code is not implemented: resolve_type_descriptor()
-Warning	6910	The following code is not implemented: resolve_type_descriptor()
+Warning	6914	The following code is not implemented: resolve_type_descriptor()
+Warning	6914	The following code is not implemented: resolve_type_descriptor()
+Warning	6914	The following code is not implemented: resolve_type_descriptor()
 call test.complex();
 result
 4.000000+6.000000i
 Warnings:
-Warning	6910	The following code is not implemented: resolve_type_descriptor()
-Warning	6910	The following code is not implemented: resolve_type_descriptor()
-Warning	6910	The following code is not implemented: resolve_type_descriptor()
+Warning	6914	The following code is not implemented: resolve_type_descriptor()
+Warning	6914	The following code is not implemented: resolve_type_descriptor()
+Warning	6914	The following code is not implemented: resolve_type_descriptor()
 UNINSTALL COMPONENT "file://component_udt_example";
 DROP PROCEDURE test.complex;

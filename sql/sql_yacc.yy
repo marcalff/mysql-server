@@ -3362,7 +3362,7 @@ type_ident:
 create_type_stmt:
           CREATE TYPE_SYM type_ident AS builtin_type
           {
-            $$= NEW_PTN PT_create_type_stmt(@$, $3);
+            $$= NEW_PTN PT_create_type_stmt(@$, $3, $5);
           }
         ;
 

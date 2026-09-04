@@ -305,6 +305,16 @@ DEFINE_METHOD(int, mysql_udt_registration_imp::register_function,
 DEFINE_METHOD(int, mysql_udt_registration_imp::unregister_function,
               (mysql_function_descriptor_t * fd)) {
   fprintf(stderr, "mysql_udt_registration_imp::unregister_function() %p\n", fd);
+
+  std::string key = fd->name;
+
+  mysql_rwlock_wrlock(&THR_LOCK_udt);
+
+  // FIXME: lifecycle, may be in use
+  udt_function_hash->erase(key);
+
+  mysql_rwlock_unlock(&THR_LOCK_udt);
+
   return 0;
 }
 
